@@ -93,36 +93,90 @@ class Matrix
         }
 };
 
-inline void verify( Matrix A, double eigenValue, vector<double> eigenVector, int n )
+inline pair<vector<double>, vector<double>> verify( Matrix A,
+        double eigenValue, vector<double> eigenVector, int n )
 {
-    vector<double> result(n, 0);
+    vector<double> resultAx(n, 0);
+    vector<double> resultLambdax(n, 0);
 
     for( int i = 0; i < n; i++ )
     {
         for( int j = 0; j < n; j++ )
         {
-            result[i] += A.data[i][j] * eigenVector[j];
+            resultAx[i] += A.data[i][j] * eigenVector[j];
         }
     }
 
-    cout << "Ax =\t\t";
-    for( auto rs: result )
+    for( int i = 0; i < n; i++ )
     {
-        cout << rs << "\t";
+        resultLambdax[i] = eigenValue * eigenVector[i];
     }
-    cout << endl;
+
+    return make_pair( resultAx, resultLambdax );
+}
+
+inline double sumOffDiagonal( Matrix A, int n )
+{
+    double sum = 0.0;
 
     for( int i = 0; i < n; i++ )
     {
-        result[i] = eigenValue * eigenVector[i];
+        for( int j = i + 1; j < n; j++ )
+        {
+            sum += fabs(A.data[i][j]);
+        }
     }
 
-    cout << "lambda x =\t";
-    for( auto rs: result )
+    return sum;
+}
+
+inline double norm1( vector<double> error, int n )
+{
+    double result = 0.0;
+
+    for( int i = 0; i < n; i++ )
     {
-        cout << rs << "\t";
+        result += fabs(error[i]);
     }
-    cout << endl;
+
+    return result;
+}
+
+inline double norm2( vector<double> error, int n )
+{
+    double result = 0.0;
+
+    for( int i = 0; i < n; i++ )
+    {
+        result += error[i] * error[i];
+    }
+
+    return sqrt(result);
+}
+
+inline double normInfinity( vector<double> error, int n )
+{
+    double result = 0.0;
+
+    for( int i = 0; i < n; i++ )
+    {
+        result = max( result, fabs(error[i]) );
+    }
+
+    return result;
+}
+
+inline double normOfAx_lambdax( vector<double> Ax, vector<double> lambdax,
+                                int n, double (*normFunc)(vector<double>, int) )
+{
+    vector<double> error(n);
+
+    for( int i = 0; i < n; i++ )
+    {
+        error[i] = Ax[i] - lambdax[i];
+    }
+
+    return normFunc(error, n);
 }
 
 inline Matrix generateSymmetricMatrix( int n )
@@ -144,7 +198,7 @@ inline Matrix generateSymmetricMatrix( int n )
     return symmetricMatrix;
 }
 
-pair<int, int> findMaxpq( Matrix matrix, int n )
+inline pair<int, int> findMaxpq( Matrix matrix, int n )
 {
     pair<int, int> pq = make_pair(0, 1);
     double maximum = fabs(matrix.data[0][1]);
@@ -164,7 +218,7 @@ pair<int, int> findMaxpq( Matrix matrix, int n )
     return pq;
 }
 
-void updateP( Matrix& P, int p, int q, double c, double s, int n )
+inline void updateP( Matrix& P, int p, int q, double c, double s, int n )
 {
     Matrix Q(P);
 
@@ -181,7 +235,7 @@ void updateP( Matrix& P, int p, int q, double c, double s, int n )
     }
 }
 
-void updateA( Matrix& A, int p, int q, double c, double s, int n )
+inline void updateA( Matrix& A, int p, int q, double c, double s, int n )
 {
     Matrix B(n,n);
 
@@ -201,12 +255,15 @@ void updateA( Matrix& A, int p, int q, double c, double s, int n )
         A.data[q][k] = A.data[k][q] = B.data[q][k];
     }
 
-    // A.data[p][q] = A.data[q][p] = 0.0;
+    A.data[p][q] = A.data[q][p] = 0.0;
 }
 
-pair<int, vector<pair<double, vector<double>>>> JacobiMethod( Matrix matrix, int n )
+inline pair<int, vector<pair<double, vector<double>>>> JacobiMethod( Matrix A, int n )
 {
-    Matrix A(matrix);
+    ofstream file( "sumOffDiagonal/sumOffDiagonal_" + to_string(n) + ".dat" );
+    file << setprecision(numeric_limits<double>::digits10) << fixed;
+    file << "# time\tsumOffDiagonal\n";
+
     int iterationTime = 0;
     bool isIdentity = true;
     Matrix P( n, n, isIdentity );
@@ -218,6 +275,8 @@ pair<int, vector<pair<double, vector<double>>>> JacobiMethod( Matrix matrix, int
     double theta;
     double c;
     double s;
+
+    file << iterationTime << "\t\t" << sumOffDiagonal( A, n ) << endl;
 
     while( fabs( A.data[p][q] ) > EPSILON )
     {
@@ -235,7 +294,14 @@ pair<int, vector<pair<double, vector<double>>>> JacobiMethod( Matrix matrix, int
         q = pq.second;
 
         iterationTime++;
+
+        file << iterationTime << "\t\t" << sumOffDiagonal( A, n ) << endl;
     }
+
+    file.close();
+
+    cout << setprecision(6) << fixed;
+    A.printData();
 
     vector<pair<double, vector<double>>> eigenSystem(n);
 
