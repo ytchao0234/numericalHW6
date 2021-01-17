@@ -8,9 +8,9 @@
 #include <iomanip>
 using namespace std;
 
-#define _DEBUG
+// #define _DEBUG
 
-#define EPSILON 0.000'001
+#define EPSILON 0.000'000'000'000'001
 
 class Matrix
 {
@@ -84,70 +84,45 @@ class Matrix
                 for( auto j : i )
                 {
                     if( fabs(j) < EPSILON )
-                        cout << 0.0 << " ";
+                        cout << 0.0 << "\t";
                     else
-                        cout << j << " ";
+                        cout << j << "\t";
                 }
                 cout << endl;
             }
         }
 };
 
-inline void verification( Matrix A, double eigenValue, vector<double> eigenVector )
+inline void verify( Matrix A, double eigenValue, vector<double> eigenVector, int n )
 {
-    if( A.sizeColumn != eigenVector.size() )
+    vector<double> result(n, 0);
+
+    for( int i = 0; i < n; i++ )
     {
-        cout << "ERROR: size error.\n";
-        return;
-    }
-
-    vector<double> result(eigenVector.size());
-
-    for( int i = 0; i < A.sizeRow; i++ )
-    {
-        result[i] = 0;
-
-        for( int j = 0; j < A.sizeColumn; j++ )
+        for( int j = 0; j < n; j++ )
         {
             result[i] += A.data[i][j] * eigenVector[j];
         }
     }
 
+    cout << "Ax =\t\t";
     for( auto rs: result )
     {
-        cout << rs << " ";
+        cout << rs << "\t";
     }
     cout << endl;
 
-    for( int i = 0; i < eigenVector.size(); i++ )
+    for( int i = 0; i < n; i++ )
     {
         result[i] = eigenValue * eigenVector[i];
     }
 
+    cout << "lambda x =\t";
     for( auto rs: result )
     {
-        cout << rs << " ";
+        cout << rs << "\t";
     }
     cout << endl;
-}
-
-multiset<pair<double, pair<int, int>>> makeMaxHeap( Matrix matrix )
-{
-    multiset<pair<double, pair<int, int>>> maxHeap;
-    pair<double, pair<int, int>> heapValue;
-
-    for( int i = 0; i < matrix.sizeRow; i++ )
-    {
-        for( int j = i + 1; j < matrix.sizeColumn; j++ )
-        {
-            heapValue.first = fabs(matrix.data[i][j]);
-            heapValue.second.first = i;
-            heapValue.second.second = j;
-            maxHeap.insert( heapValue );
-        }
-    }
-    
-    return maxHeap;
 }
 
 inline Matrix generateSymmetricMatrix( int n )
@@ -169,123 +144,110 @@ inline Matrix generateSymmetricMatrix( int n )
     return symmetricMatrix;
 }
 
-void printMaxHeap( multiset<pair<double, pair<int, int>>> maxHeap )
+pair<int, int> findMaxpq( Matrix matrix, int n )
 {
-    for( auto value : maxHeap )
+    pair<int, int> pq = make_pair(0, 1);
+    double maximum = fabs(matrix.data[0][1]);
+
+    for( int i = 0; i < n; i++ )
     {
-        cout << value.first << " " << value.second.first << " " << value.second.second << endl;
+        for( int j = i + 1; j < n; j++ )
+        {
+            if( fabs(matrix.data[i][j]) > maximum )
+            {
+                pq = make_pair( i, j );
+                maximum = fabs(matrix.data[i][j]);
+            }
+        }
     }
-    cout << endl;
+
+    return pq;
 }
 
-pair<int, int> findMaxpq( multiset<pair<double, pair<int, int>>>& maxHeap )
+void updateP( Matrix& P, int p, int q, double c, double s, int n )
 {
-    int p = maxHeap.rbegin()->second.first;
-    int q = maxHeap.rbegin()->second.second;
+    Matrix Q(P);
 
-    multiset<pair<double, pair<int, int>>>::iterator maxHeapIt;
-    maxHeapIt = maxHeap.end();
-    maxHeap.erase(--maxHeapIt);
-
-    return make_pair( p, q );
-}
-
-void updateP( Matrix& P, int p, int q, double cosTheta, double sinTheta )
-{
-    for(int k = 0; k < P.sizeRow; k++ )
+    for(int k = 0; k < n; k++ )
     {
-        P.data[k][p] = cosTheta * P.data[k][p] + sinTheta * P.data[k][q];
-        P.data[k][q] = -sinTheta * P.data[k][p] + cosTheta * P.data[k][q];
+        Q.data[p][k] = c * P.data[k][p] + s * P.data[k][q];
+        Q.data[q][k] = -s * P.data[k][p] + c * P.data[k][q];
+    }
+
+    for(int k = 0; k < n; k++ )
+    {
+        P.data[k][p] = Q.data[p][k];
+        P.data[k][q] = Q.data[q][k];
     }
 }
 
-void updateA( Matrix& A, multiset<pair<double, pair<int, int>>>& maxHeap,
-              int p, int q, double cosTheta, double sinTheta )
+void updateA( Matrix& A, int p, int q, double c, double s, int n )
 {
-    Matrix B(A);
+    Matrix B(n,n);
 
-    B.data[p][p] = cosTheta * cosTheta * A.data[p][p] + 
-                   2 * sinTheta * cosTheta * A.data[p][q] + 
-                   sinTheta * sinTheta * A.data[q][q];
+    B.data[p][p] = c*c * A.data[p][p] + 2*s*c * A.data[p][q] + s*s * A.data[q][q];
+    B.data[q][q] = s*s * A.data[p][p] - 2*s*c * A.data[p][q] + c*c * A.data[q][q];
 
-    B.data[q][q] = sinTheta * sinTheta * A.data[p][p] - 
-                   2 * sinTheta * cosTheta * A.data[p][q] + 
-                   cosTheta * cosTheta * A.data[q][q];
-
-    for( int k = 0; k < B.sizeColumn; k++ )
+    for( int k = 0; k < n; k++ )
     {
         if( k == p || k == q ) continue;
-        B.data[p][k] = cosTheta * A.data[k][p] + sinTheta * A.data[k][q];
-        B.data[q][k] = -sinTheta * A.data[k][p] + cosTheta * A.data[k][q];
+        B.data[p][k] = c * A.data[k][p] + s * A.data[k][q];
+        B.data[q][k] = -s * A.data[k][p] + c * A.data[k][q];
     }
 
-    for( int k = 0; k < A.sizeRow; k++ )
+    for( int k = 0; k < n; k++ )
     {
         A.data[p][k] = A.data[k][p] = B.data[p][k];
         A.data[q][k] = A.data[k][q] = B.data[q][k];
     }
 
-    A.data[p][q] = A.data[q][p] = 0.0;
-
-    maxHeap = makeMaxHeap( A );
+    // A.data[p][q] = A.data[q][p] = 0.0;
 }
 
-int JacobiMethod( Matrix matrix, multiset<pair<double, pair<int, int>>> maxHeap )
+pair<int, vector<pair<double, vector<double>>>> JacobiMethod( Matrix matrix, int n )
 {
     Matrix A(matrix);
     int iterationTime = 0;
     bool isIdentity = true;
-    Matrix P(A.sizeRow, A.sizeColumn, isIdentity );
+    Matrix P( n, n, isIdentity );
 
-    pair<int, int> pq = findMaxpq( maxHeap );
+    pair<int, int> pq = findMaxpq( A, n );
     int p = pq.first;
     int q = pq.second;
 
     double theta;
-    double sinTheta;
-    double cosTheta;
+    double c;
+    double s;
 
     while( fabs( A.data[p][q] ) > EPSILON )
     {
         theta = 0.5 * atan2( 2 * A.data[p][q],
                             A.data[p][p] - A.data[q][q] );
 
-        sinTheta = sin( theta );
-        cosTheta = cos( theta );
+        c = cos( theta );
+        s = sin( theta );
 
-        updateP( P, p, q, cosTheta, sinTheta );
-        updateA( A, maxHeap, p, q, cosTheta, sinTheta );
-        
-        #ifdef _DEBUG
-            P.printData();
-            cout << endl;
-            A.printData();
-            cout << "-------------------------\n";
-        #endif
+        updateP( P, p, q, c, s, n );
+        updateA( A, p, q, c, s, n );
 
-        pq = findMaxpq( maxHeap );
+        pq = findMaxpq( A, n );
         p = pq.first;
         q = pq.second;
 
         iterationTime++;
     }
 
-    vector<double> eigenVector(A.sizeRow);
-    double eigenValue;
+    vector<pair<double, vector<double>>> eigenSystem(n);
 
-    for( int i = 0; i < P.sizeRow; i++ )
+    for( int i = 0; i < n; i++ )
     {
-        for( int j = 0; j < P.sizeColumn; j++ )
-        {
-            eigenVector[j] = P.data[i][j];
-        }
+        eigenSystem[i].first = A.data[i][i];
 
-        cout << "--------------------------------\n";
-        cout << "verify " << i + 1 << endl;
-        eigenValue = A.data[i][i];
-        verification( matrix, eigenValue, eigenVector );
-        cout << "--------------------------------\n";
+        for( int j = 0; j < n; j++ )
+        {
+            eigenSystem[i].second.push_back(P.data[j][i]);
+        }
     }
 
-    return iterationTime;
+    return make_pair( iterationTime, eigenSystem );
 }

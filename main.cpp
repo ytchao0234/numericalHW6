@@ -2,19 +2,40 @@
 
 int main()
 {
-    Matrix symmetricMatrix = generateSymmetricMatrix(3);
-    multiset<pair<double, pair<int, int>>> maxHeap = makeMaxHeap( symmetricMatrix );
+    for( int n = 3; n <= 20; n++ )
+    {
+        Matrix symmetricMatrix = generateSymmetricMatrix(n);
 
-    #ifdef _DEBUG
-        cout << setprecision( 6 ) << fixed;
-        cout << "initial: \n";
-        symmetricMatrix.printData();
-        cout << "--------------------\n";
-    #endif
+        pair<int, vector<pair<double, vector<double>>>> result
+            = JacobiMethod( symmetricMatrix, n );
 
-    int time = JacobiMethod( symmetricMatrix, maxHeap );
+        int iterationTime = result.first;
+        vector<pair<double, vector<double>>> eigenSystem = result.second;
 
-    cout << "time: " << time << endl; 
+        cout << "matrix size: " << n << endl;
+        cout << "iterationTime: " << iterationTime << endl;
+
+        #ifdef _DEBUG
+            cout << "matrix: " << endl;
+            symmetricMatrix.printData();
+            cout << endl;
+
+            cout << setprecision(numeric_limits<double>::digits10) << fixed;
+
+            for( int i = 0; i < n; i++ )
+            {
+                cout << "verify " << i + 1 << endl;
+                cout << "eigenValue: " << eigenSystem[i].first << endl;
+                cout << "eigenVector: ";
+                for( int j = 0; j < n; j++ ) cout << eigenSystem[i].second[j] << " ";
+                cout << endl;
+                verify( symmetricMatrix, eigenSystem[i].first, eigenSystem[i].second, n);
+                cout << "-----------------------------------\n";
+            }
+        #endif
+        
+        cout << "-----------------------------------\n";
+    }
 
     return 0;
 }
