@@ -93,6 +93,48 @@ class Matrix
         }
 };
 
+inline void maxHeapInsert( multiset<pair<double, pair<int, int>>> maxHeap,
+                           int indexI, int indexJ, double value )
+{
+    static pair<double, pair<int, int>> heapValue;
+
+    heapValue.first = value;
+    heapValue.second.first = indexI;
+    heapValue.second.second = indexJ;
+
+    maxHeap.insert( heapValue );
+}
+
+inline multiset<pair<double, pair<int, int>>> makeMaxHeap( Matrix A, int n )
+{
+    multiset<pair<double, pair<int, int>>> maxHeap;
+
+    for( int i = 0; i < n; i++ )
+    {
+        for( int j = i + 1; j < n; j++ )
+        {
+            maxHeapInsert( maxHeap, i, j, A.data[i][j] );
+        }
+    }
+
+    return maxHeap;
+}
+
+inline pair<int, int> findMaxpq_maxHeap( multiset<pair<double, pair<int, int>>> maxHeap )
+{
+    pair<int, int> pq;
+
+    pq.first = maxHeap.rbegin()->second.first;
+    pq.second = maxHeap.rbegin()->second.second;
+
+    multiset<pair<double, pair<int, int>>>::iterator maxHeapIt;
+    maxHeapIt = maxHeap.end();
+
+    maxHeap.erase( --maxHeapIt );
+
+    return pq;
+}
+
 inline pair<vector<double>, vector<double>> verify( Matrix A,
         double eigenValue, vector<double> eigenVector, int n )
 {
